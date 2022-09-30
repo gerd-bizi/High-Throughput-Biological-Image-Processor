@@ -1,3 +1,5 @@
+%Property of Dr. Ginzberg at the Kafri Lab, SickKids, 2022
+
 function [im]=showseg(im,bw)
 % im - image
 
