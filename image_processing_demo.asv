@@ -1,0 +1,162 @@
+%Viewing multilayer tiff images
+imshow(imread('tile_x001_y001.tif',1),[]) %1 is to open the first of multilater images, [] is to 
+
+%Save image as variable
+CAKI1_DNA=double(imread('tile_x001_y001.tif',1));
+
+%Close image with a disk the size of the background fluctuations.
+disk = strel('disk',5,4); 
+CAKI1_DNA_close = imclose(CAKI1_DNA,disk);
+imtool(CAKI1_DNA_close,[])
+
+%Open closed image with disk larger than labackgrorgest cell
+disklarge = strel('disk',50,4);
+CAKI1_DNA_openlarge2 = imopen(CAKI1_DNA_close,disklarge);
+imtool(CAKI1_DNA_openlarge2,[])
+
+%% Subtract opened image from original
+%CAKI1_DNA_clean2 = (CAKI1_DNA-CAKI1_DNA_openlarge2);
+CAKI1_DNA_clean2 = (double(CAKI1_DNA)-double(CAKI1_DNA_openlarge2));
+imtool(CAKI1_DNA_clean2,[])
+
+%{
+%% Show linescans to illustrate background detection
+[I2,xx,yy]=linescan(CAKI1_DNA); %linescan of original image
+figure(2);clf
+hold on
+plot(CAKI1_DNA(I2(2:end)),'-k')
+plot(CAKI1_DNA_close(I2(2:end)),'-b') %linescan of closed image (background fluctuations filled in)
+plot(CAKI1_DNA_openlarge2(I2(2:end)),'-g') %linescan of opened image (background)
+legend('original image','closed image','opened image');title('Linescans: In background regions, original image intensity dips below opened image')
+
+%Segmentation
+figure
+plot(CAKI1_DNA_clean2(I2(2:end)),'-g') %linescan of im-imo, showing that background now contains negative values
+hold on
+plot(zeros(1,100),'-k')
+legend('image - opened image','zero');title('Background regions contain negative values')
+%}
+%Collect the region of the image that has negative values.
+bw=CAKI1_DNA_clean2<0; %Negative values (in background) appear as ones in a binary image
+imtool(bw)
+diskbw = strel('disk',10,4); 
+bw2=imclose(bw,diskbw); %Fill in holes in background
+imtool(bw2)
+
+%Spot cells.
+%Resize to smooth
+%small = imresize(CAKI1_DNA_open, [26 34]);
+small = imresize(CAKI1_DNA_clean2, 0.1); % 0.05 missed cells, 0.15 gave multiple spots per cell.
+imtool(small,[]) 
+
+%Find seeds
+seeds=imregionalmax(small);
+imtool(seeds)
+seeds2=imresize(seeds,[512 672]);
+imtool(seeds2)
+seeds3 = roifilt2(0, seeds2, bw2);
+imtool(seeds3)
+
+
+%Extract x,y coordinates of seeds. [I]=rows (y-axis), [J]=columns (x-axis)
+[I,J] = find(seeds3);
+%Irescale=(I-13.5);
+%plot((J.*20),((Irescale.*20)+256),'.m')
+
+%Display original image with seeds.
+figure
+imshow(CAKI1_DNA,[])
+hold on
+%plot((J.*9.8824),((I.*9.8462)),'.g')
+plot(J,I,'.g')
+
+%Alternative display original image with seeds.
+% seeds4=imresize(seeds3,[52 68]);
+% imtool(seeds4)
+% [I,J] = find(seeds4);
+% figure
+% imshow(CAKI1_DNA,[])
+% hold on
+% plot((J.*9.8824),((I.*9.8462)),'.g')
+
+% Separate touching cells
+
+% Transform image so nuclei are darker than background. Impose local minima
+% at seed positions and watershed.
+CAKI1_trans = -(double(CAKI1_DNA_clean2));
+imtool(CAKI1_trans,[])
+CAKI1_min=imimposemin(CAKI1_trans,seeds3);
+imtool(CAKI1_min,[])
+CAKI1_wat = watershed(CAKI1_min);
+%CAKI1_wat = watershed_old(CAKI1_max);
+imtool(CAKI1_wat,[])
+Nuclei=CAKI1_wat&~bw2; %Remove background areas from watershed segments.
+imtool(Nuclei,[])
+[CAKI1_seg]=showseg(CAKI1_DNA_clean2,Nuclei); %Display segmented image.
+imtool(CAKI1_seg,[])
+
+%Use nuclei as seeds to segment cells.
+
+%Viewing protein mass channel.
+imtool(imread('tile_x001_y001.tif',4),[])
+
+%Save image as variable
+CAKI1_protein=double(imread('tile_x001_y001.tif',4));
+
+%Close image with a disk the size of the background fluctuations.
+disk = strel('disk',1,4);
+CAKI1_protein_close = imclose(CAKI1_protein,disk);
+imtool(CAKI1_protein_close,[])
+
+%Open closed image with disk larger than largest cell
+disklarge = strel('disk',200,4);
+CAKI1_protein_openlarge2 = imopen(CAKI1_protein_close,disklarge);
+imtool(CAKI1_protein_openlarge2,[])
+
+%Subtract opened image from original
+CAKI1_protein_clean2 = (double(CAKI1_protein)-double(CAKI1_protein_openlarge2));
+imtool(CAKI1_protein_clean2,[])
+
+% %Show linescans to illustrate background detection
+% [I2,xx,yy]=linescan(CAKI1_protein); %linescan of original image
+% hold on
+% plot(CAKI1_protein_close(I2(2:end)),'-b') %linescan of closed image (background fluctuations filled in)
+% plot(CAKI1_protein_openlarge2(I2(2:end)),'-g') %linescan of opened image (background)
+% 
+% figure
+% plot(CAKI1_protein_clean2(I2(2:end)),'-g') %linescan of im-imo, showing that background now contains negative values
+% hold on
+% plot(zeros(1,100),'-k')
+
+%Collect the region of the image that has negative values.
+bwp=CAKI1_protein_clean2<0; %Negative values (in background) appear as ones in a binary image
+imtool(bwp)
+diskbwp = strel('disk',15,4); 
+bwp2=imclose(bwp,diskbwp); %Fill in holes in background
+imtool(bwp2)
+
+%Spot cells.
+
+%Use nuclei as seeds to segment cells
+
+% Separate touching cells
+
+% Transform image so nuclei are darker than background. Impose local minima
+% at seed positions and watershed.
+CAKI1_transp = -(double(CAKI1_protein_clean2));
+imtool(CAKI1_transp,[])
+CAKI1_minp=imimposemin(CAKI1_transp,Nuclei);
+imtool(CAKI1_minp,[])
+CAKI1_watp = watershed(CAKI1_minp);
+%CAKI1_wat = watershed_old(CAKI1_max);
+imtool(CAKI1_watp,[])
+Cells=CAKI1_watp&~bwp2; %Remove background areas from watershed segments.
+imtool(Cells,[])
+[CAKI1_segp]=showseg(CAKI1_protein_clean2,Cells); %Display segmented image.
+imtool(CAKI1_segp,[])
+
+%Count cells.
+[L,num] = bwlabel(Cells);
+
+
+
